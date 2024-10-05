@@ -1,5 +1,4 @@
 const std = @import("std");
-var rndGen = std.rand.DefaultPrng.init(4);
 
 const Point = struct {
     cx: f32,
@@ -12,7 +11,8 @@ const Point = struct {
     }
 };
 
-export fn initialisePoints(num_points: usize) [*]const Point {
+export fn initialisePoints(num_points: usize, init_value: usize) [*]const Point {
+    var rndGen = std.rand.DefaultPrng.init(init_value);
     const allocator = std.heap.page_allocator;
     const rand = rndGen.random();
 

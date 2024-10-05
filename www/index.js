@@ -1,16 +1,10 @@
-// const NUM_POINTS = 5;
-// const RADIUS_SIZE = 0.02;
-//
-// const NUM_POINTS = 50;
-// const RADIUS_SIZE = 0.01;
-
 const NUM_POINTS = 1000;
 const RADIUS_SIZE = 0.005;
 
 var points;
 var pointArray;
 var pointOrder;
-
+var isDragging = -1;
 
 function initPoints(points) {
   let cs = [];
@@ -36,7 +30,7 @@ async function run() {
   const wasmModule = await WebAssembly.instantiateStreaming(response, importObject);
   const { initialisePoints, getPointOrder, memory } = wasmModule.instance.exports;
 
-  const pointsPtr = initialisePoints(NUM_POINTS);
+  const pointsPtr = initialisePoints(NUM_POINTS, Date.now());
   pointArray = new Float32Array(memory.buffer, pointsPtr, NUM_POINTS * 2);
   points = initPoints(pointArray);
 
@@ -44,6 +38,8 @@ async function run() {
   pointOrder = new Int32Array(memory.buffer, pointOrderPtr, NUM_POINTS);
 
   window.addEventListener("mousemove", (event) => {
+    if (isDragging == -1) return
+
     pointArray = new Float32Array(memory.buffer, pointsPtr, NUM_POINTS * 2);
 
     for (let i = 0; i < points.length; i++) {
@@ -59,7 +55,6 @@ async function run() {
 run().catch(console.error).then(theRest);
 
 function theRest() {
-  console.log(pointArray);
   const canvas = document.getElementById("tsp-canvas");
   const gl = canvas.getContext("webgl2");
 
@@ -105,16 +100,6 @@ function theRest() {
     }
     `;
 
-
-  function updatePoints() {
-    const tmp = [];
-    for (let i = 0; i < points.length; i++) {
-      tmp[i * 2] = points[i].cx;
-      tmp[i * 2 + 1] = points[i].cy;
-    }
-    pointArray = new Float32Array(tmp);
-  }
-
   function updateLines() {
     const lineVertices = [];
     for (let i = 0; i < pointOrder.length - 1; i++) {
@@ -126,18 +111,10 @@ function theRest() {
     return new Float32Array(lineVertices);
   }
 
-  function loadShader(gl, type, source) {
-    const shader = gl.createShader(type);
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    return shader;
-  }
-
   const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vertexCode);
   const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fragCode);
 
   const program = gl.createProgram();
-
   gl.attachShader(program, vertexShader);
   gl.attachShader(program, fragmentShader);
   gl.linkProgram(program);
@@ -146,14 +123,13 @@ function theRest() {
   const lineFragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, lineFragCode);
 
   const lineProgram = gl.createProgram();
-
   gl.attachShader(lineProgram, lineVertexShader);
   gl.attachShader(lineProgram, lineFragmentShader);
   gl.linkProgram(lineProgram);
 
-  lineBuffer = gl.createBuffer();
-
   const positionBuffer = gl.createBuffer();
+  const lineBuffer = gl.createBuffer();
+
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
   const positions = [-1, -1, 3, -1, -1, 3];
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
@@ -175,7 +151,6 @@ function theRest() {
 
   gl.uniform2f(resolutionUniformLocation, canvas.width, canvas.height);
 
-  let isDragging = -1;
   let aspectRatio = canvas.width / canvas.height;
 
   function updateCircleUniforms() {
@@ -186,6 +161,8 @@ function theRest() {
       centerArray[i * 2] = point.cx;
       centerArray[i * 2 + 1] = point.cy;
     });
+
+    gl.useProgram(program);
 
     gl.uniform2fv(gl.getUniformLocation(program, "u_centers"), centerArray);
     gl.uniform1fv(gl.getUniformLocation(program, "u_radii"), radiusArray);
@@ -207,6 +184,7 @@ function theRest() {
     gl.bufferData(gl.ARRAY_BUFFER, lineVertices, gl.DYNAMIC_DRAW);
 
     const positionAttribLoc = gl.getAttribLocation(lineProgram, "a_position");
+    gl.enableVertexAttribArray(positionAttribLoc);
     gl.vertexAttribPointer(positionAttribLoc, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(positionAttribLoc);
 
@@ -216,10 +194,8 @@ function theRest() {
   function draw() {
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    gl.useProgram(program);
     updateCircleUniforms();
 
-    gl.useProgram(lineProgram);
     drawLines(points);
   }
 
@@ -249,7 +225,6 @@ function theRest() {
       points[isDragging].cx = (e.clientX - rect.left) / rect.width;
       points[isDragging].cy = 1 - (e.clientY - rect.top) / rect.height;
 
-      updatePoints();
       draw();
     }
   });
@@ -280,4 +255,11 @@ function theRest() {
   });
 
   draw();
+}
+
+function loadShader(gl, type, source) {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  return shader;
 }
