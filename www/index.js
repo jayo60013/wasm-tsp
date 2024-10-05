@@ -1,5 +1,12 @@
-const NUM_POINTS = 50;
-const RADIUS_SIZE = 0.01;
+// const NUM_POINTS = 5;
+// const RADIUS_SIZE = 0.02;
+//
+// const NUM_POINTS = 50;
+// const RADIUS_SIZE = 0.01;
+
+const NUM_POINTS = 1000;
+const RADIUS_SIZE = 0.005;
+
 var points;
 var pointArray;
 var pointOrder;
