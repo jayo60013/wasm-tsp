@@ -1,4 +1,3 @@
-// tsp-gl.js
 import { updateLines } from "./utils.js";
 
 export function draw(gl, points, program, lineProgram, positionBuffer, lineBuffer, pointOrder, aspectRatio) {
@@ -20,16 +19,21 @@ function updateCircleUniforms(gl, points, program, positionBuffer) {
     centerArray[i * 2 + 1] = point.cy;
   });
 
-  gl.useProgram(program);
+  const pointSizeLocation = gl.getUniformLocation(program, "u_pointSize");
+  const pointSize = 10.0;
+  gl.uniform1f(pointSizeLocation, pointSize);
 
-  gl.uniform2fv(gl.getUniformLocation(program, "u_centers"), centerArray);
+  const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+  gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, centerArray, gl.STATIC_DRAW);
+
   const positionAttribLoc = gl.getAttribLocation(program, "a_position");
   gl.enableVertexAttribArray(positionAttribLoc);
   gl.vertexAttribPointer(positionAttribLoc, 2, gl.FLOAT, false, 0, 0);
 
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 3);
+  gl.drawArrays(gl.POINTS, 0, points.length);
 }
 
 function drawLines(gl, program, buffer, lineVertices) {

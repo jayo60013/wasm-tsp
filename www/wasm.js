@@ -1,3 +1,4 @@
+
 export async function initWasm(NUM_POINTS) {
 
   let wasmMemory = new WebAssembly.Memory({
@@ -8,6 +9,13 @@ export async function initWasm(NUM_POINTS) {
   let importObject = {
     env: {
       memory: wasmMemory,
+      print: (ptr, len) => {
+        const memory = wasmModule.instance.exports.memory;
+        const view = new Uint8Array(memory.buffer, ptr, len);
+        const decodedString = new TextDecoder().decode(view);
+        console.log(decodedString);
+      },
+      getCurrentTime: () => { return performance.now() }
     }
   };
 
@@ -18,7 +26,6 @@ export async function initWasm(NUM_POINTS) {
   return {
     initialisePoints,
     getPointOrder,
-    memory,
-    wasmMemory
+    memory
   }
 }
