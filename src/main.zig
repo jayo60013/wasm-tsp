@@ -11,6 +11,9 @@ const Point = struct {
     }
 };
 
+extern "env" fn print(ptr: [*]const u8, len: usize) void;
+extern "env" fn getCurrentTime() f64;
+
 export fn initialisePoints(num_points: usize, init_value: usize) [*]const Point {
     var rndGen = std.rand.DefaultPrng.init(init_value);
     const allocator = std.heap.page_allocator;
@@ -59,4 +62,24 @@ export fn getPointOrder(points: [*]const Point, num_points: usize) [*]const usiz
     }
 
     return order.ptr;
+}
+
+export fn benchmarkGetPointOrder(points: [*]const Point, num_points: usize) [*]const usize {
+    const start_time = getCurrentTime();
+
+    const allocator = std.heap.page_allocator;
+    var order = getPointOrder(points, num_points);
+
+    for (0..9) |_| {
+        order = getPointOrder(points, num_points);
+    }
+
+    const end_time = getCurrentTime();
+    const ms = end_time - start_time;
+    const result = std.fmt.allocPrint(allocator, "Function took {d:.3} ms", .{ms}) catch unreachable;
+    defer allocator.free(result);
+
+    print(result.ptr, result.len);
+
+    return order;
 }
